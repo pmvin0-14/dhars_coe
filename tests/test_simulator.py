@@ -97,9 +97,9 @@ def test_invalid_data(catalog, pricing_df):
         'availability_pct': [100.0] * 10
     })
     
-    is_valid, issues = DataValidator.validate_telemetry(df)
-    assert not is_valid
-    assert any("Invalid CPU" in iss for iss in issues)
+    status, issues, clean_df = DataValidator.validate_telemetry(df)
+    assert status == "INVALID"
+    assert len(clean_df) == 0
 
 def test_safe_candidate(catalog, pricing_df):
     # Perfect scenario: very low utilization, moving down saves cost without risk

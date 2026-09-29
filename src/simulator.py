@@ -13,7 +13,8 @@ class Simulator:
         self.perf_model = PerformanceModel()
 
     def run_simulation(self, env_data, current_instance, candidate_instance, 
-                       latency_target=250, availability_target=99.9, traffic_growth=0.0):
+                       latency_target=250, availability_target=99.9, traffic_growth=0.0,
+                       profile='steady', cpu_pressure=0.0, memory_pressure=0.0):
         """
         Runs the full simulation pipeline for a candidate instance.
         """
@@ -25,7 +26,9 @@ class Simulator:
         
         # 2. Workload Projection
         projected_workload = self.workload_model.project_workload(
-            env_data, current_instance, candidate_instance, traffic_growth
+            env_data, current_instance, candidate_instance, 
+            traffic_growth=traffic_growth, profile=profile, 
+            cpu_pressure=cpu_pressure, memory_pressure=memory_pressure
         )
         
         # 3. Performance Projection

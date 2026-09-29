@@ -78,7 +78,7 @@ def test_rollback_demonstration(catalog, pricing_df):
     
     # 1. Pre check will fail, but we will bypass and execute migration with failure injected
     # to demonstrate rollback logic.
-    success, msg = orchestrator.execute_migration(env_id, 'medium', 'small', simulate_post_migration_failure=True)
+    success, msg = orchestrator.execute_migration(env_id, 'medium', 'small', monitoring_scenario="persistent_failure")
     
     assert success is False
     assert "Rolled back due to" in msg

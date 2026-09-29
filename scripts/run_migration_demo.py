@@ -99,7 +99,7 @@ def main():
         print("Injecting post-migration failure...")
         success, exec_msg = orchestrator.execute_migration(
             env_id, current_inst, candidate_inst, 
-            simulate_post_migration_failure=True, sim_res=sim_res
+            monitoring_scenario="persistent_failure", sim_res=sim_res
         )
         print(f"Migration Execution: {exec_msg}")
         

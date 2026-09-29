@@ -122,6 +122,27 @@ with tab1:
         fig_proj.add_trace(go.Box(y=env_telemetry['cpu_utilization_pct'], name="Baseline CPU"))
         fig_proj.add_trace(go.Box(y=pdf['projected_cpu'], name="Projected CPU"))
         st.plotly_chart(fig_proj, use_container_width=True)
+        
+        from src.analysis import AnalysisEngine, StakeholderViews
+        st.header("Candidate Comparison (Cost/Performance Tradeoff)")
+        tradeoff = AnalysisEngine.cost_performance_tradeoff(baseline, sim_res) # baseline is a dict here but we need sim_res style for current
+        sim_curr = sim.run_simulation(env_telemetry, current_inst, current_inst, latency_target, availability_target, traffic_growth)
+        tradeoff = AnalysisEngine.cost_performance_tradeoff(sim_curr, sim_res)
+        if tradeoff:
+            st.json(tradeoff)
+            
+        st.header("Stakeholder Views")
+        st.markdown("**INFRASTRUCTURE ENGINEER**")
+        infra_view = StakeholderViews.get_infrastructure_engineer_view(env_id, {"cpu_projection": sim_res['peak_cpu'], "decision": decision}, "HEALTHY" if decision == "SAFE TO RIGHTSIZE" else "N/A")
+        st.json(infra_view)
+        
+        st.markdown("**SERVICE OWNER**")
+        so_view = StakeholderViews.get_service_owner_view({"latency_projection": slo['projected_p95_latency'], "availability_projection": slo['projected_availability'], "decision": decision})
+        st.json(so_view)
+        
+        explanation = AnalysisEngine.generate_explanation(decision, current_inst, candidate_inst, sim_res, reasons)
+        with st.expander("Explainability: WHY this decision?"):
+            st.json(explanation)
     
         # --- Migration Lifecycle (LOCAL MOCK INFRASTRUCTURE) ---
         st.header("Migration Lifecycle (LOCAL MOCK INFRASTRUCTURE)")
@@ -171,7 +192,7 @@ with tab1:
                     if approved:
                         success, exec_msg = orchestrator.execute_migration(
                             env_id, current_inst, candidate_inst, 
-                            simulate_post_migration_failure=simulate_failure, 
+                            monitoring_scenario="persistent_failure" if simulate_failure else "stable", 
                             sim_res=updated_sim_res
                         )
                         st.rerun()
@@ -267,3 +288,9 @@ with tab2:
             
             st.markdown("### Blocked Migrations")
             st.dataframe(pd.DataFrame(blocked_envs))
+            
+            from src.analysis import AnalysisEngine, StakeholderViews
+            portfolio_res = AnalysisEngine.portfolio_optimization(envs_df, telemetry_df, orchestrator)
+            st.markdown("### FinOps View")
+            finops_view = StakeholderViews.get_finops_view(portfolio_res['summary'])
+            st.json(finops_view)

@@ -77,7 +77,7 @@ def test_post_migration_failure_triggers_rollback(test_setup):
     approved, msg, sim_res = orchestrator.pre_migration_check('env-test', 'medium', 'small', env_data)
     assert approved is True
     
-    success, exec_msg = orchestrator.execute_migration('env-test', 'medium', 'small', simulate_post_migration_failure=True, sim_res=sim_res)
+    success, exec_msg = orchestrator.execute_migration('env-test', 'medium', 'small', monitoring_scenario="persistent_failure", sim_res=sim_res)
     assert success is False
     assert "Rollback" in exec_msg or "Rolled back" in exec_msg
     assert infrastructure.get_instance_state('env-test') == 'medium' # Rolled back to original state
@@ -94,8 +94,8 @@ def test_audit_events_are_generated(test_setup):
     assert "PRECHECK_STARTED" in event_types
     assert "MIGRATION_APPROVED" in event_types
     assert "MIGRATION_STARTED" in event_types
-    assert "MIGRATION_COMPLETED" in event_types
-    assert "POSTCHECK_STARTED" in event_types
+    assert "MIGRATION_EXECUTED" in event_types
+    assert "MONITORING_STARTED" in event_types
     assert "POSTCHECK_PASSED" in event_types
 
 def test_current_instance_mismatch_blocks_migration(test_setup):
