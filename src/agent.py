@@ -47,6 +47,15 @@ class RightsizingAgent:
             return "LOW"
 
     def run_lifecycle(self, env_id, candidate, failure_mode="NORMAL"):
+        """
+        Executes the autonomous agent workflow. 
+        State transitions:
+        OBSERVE -> ANALYZE -> PLAN -> VALIDATING -> EXECUTING -> VERIFYING -> RE-PLAN (ROLLBACK) / COMPLETED
+        
+        This loop mimics an SRE investigating a rightsizing opportunity, performing local safety checks,
+        executing a mock infrastructure transition, checking post-migration health, and automatically
+        rolling back if degradation is observed.
+        """
         self.state = "OBSERVING"
         self.env_id = env_id
         self.candidate = candidate

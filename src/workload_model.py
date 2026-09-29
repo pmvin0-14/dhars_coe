@@ -24,9 +24,13 @@ class WorkloadModel:
         candidate_vcpu = self.catalog[candidate_instance]['vcpu']
         candidate_mem = self.catalog[candidate_instance]['memory_gb']
         
+        # Safety Assumption: Resource scaling is treated as strictly linear with respect to vCPU/Memory ratios.
+        # This guarantees deterministic safety bounds. If a candidate has half the vCPU, the projected CPU usage 
+        # doubles. This is a conservative bound (worst-case scenario), ensuring safety for critical workloads.
         cpu_ratio = current_vcpu / candidate_vcpu
         mem_ratio = current_mem / candidate_mem
         
+        # Traffic growth factor allows compounding existing request volumes to stress-test capacity.
         growth_factor = 1.0 + traffic_growth
         projected = telemetry_df.copy()
         

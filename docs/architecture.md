@@ -1,54 +1,36 @@
 # Architecture
 
-## Rightsizing Simulator Architecture
+## Overview
+The system relies on a pipelined process evaluating telemetry into concrete decisions executed against a local mock infrastructure state. 
+
+## Data Flow Diagram
 
 ```mermaid
 graph TD
-    A[Historical Telemetry Data] --> B[Data Validator]
-    B --> C[Baseline Engine]
-    C --> D[Workload Model]
-    D --> E[Performance Model]
-    E --> F[Availability Model]
-    A --> G[Cost Model]
-    F --> H[Decision Engine]
-    G --> H
-    H --> I[Streamlit Dashboard]
-    
-    J[Legacy Workflow: Manual Rightsizing] --> K[Rightsizing Simulator Safety Gate]
-    K -- SAFE --> L[Local Mock Infrastructure Migration]
-    K -- BLOCK --> M[Migration Prevented]
-    
-    L --> N[Post-Migration Check]
-    N -- SLO Violated --> O[ROLLBACK Triggered]
+    A[Telemetry] --> B[Validation]
+    B --> C[Workload Model]
+    C --> D[Simulation]
+    D --> E[Candidate Selection]
+    E --> F[Safety Engine]
+    F --> G[Agentic Decision Layer]
+    G --> H[Migration]
+    H --> I[Monitoring]
+    I --> J[Observation]
+    J --> K[Rollback / Replan]
+    K --> L[Audit]
+    L --> M[Portfolio / Dashboard]
 ```
 
-### Agentic Intelligence Layer
-
-The system has been upgraded to a 9/10 Agentic Maturity level by introducing an autonomous `RightsizingAgent`. This agent controls the end-to-end rightsizing lifecycle without bypassing any safety thresholds. 
-
-The agent operates as a finite state machine:
-`OBSERVING -> ANALYZING -> PLANNING -> VALIDATING -> EXECUTING -> VERIFYING -> COMPLETED / ROLLED_BACK / BLOCKED`
-
-```mermaid
-graph TD
-    OBS[OBSERVING] --> ANA[ANALYZING]
-    ANA --> PLN[PLANNING]
-    PLN --> VAL[VALIDATING]
-    
-    VAL -- SAFE --> EXE[EXECUTING]
-    VAL -- DO NOT RIGHTSIZE --> BLK[BLOCKED]
-    
-    EXE --> VER[VERIFYING]
-    VER -- HEALTHY --> CMP[COMPLETED]
-    VER -- DEGRADED --> RPL[RE_PLAN]
-    
-    RPL --> RBK[ROLLED_BACK]
-```
-
-### Components
-
-1. **Agent Tools (`AgentTools`)**: Exposes programmatic functions (e.g. `load_telemetry`, `simulate_rightsizing`, `execute_local_migration`, `run_health_check`) to the agent, shielding the underlying deterministic implementation.
-2. **Rightsizing Agent (`RightsizingAgent`)**: Navigates the state machine autonomously. It handles risk scoring, trace logging, and programmatic rollback handling upon encountering failure.
-3. **Safety Engine (`DecisionEngine`)**: Remained immutable. The agent cannot override or bypass it.
-4. **Mock Infrastructure (`LocalInfrastructure`)**: Holds an in-memory representation of instance types.
-5. **Audit Ledger (`AuditLog`)**: Records every autonomous decision made by the agent for compliance and observability.
+## Description
+1. **Telemetry**: Raw environment metrics are loaded.
+2. **Validation**: Edge cases (missing data, negative values) are scrubbed.
+3. **Workload Model**: Transforms metrics based on seasonal/peak parameters.
+4. **Simulation**: Projects expected latencies and resource saturation on a candidate instance.
+5. **Candidate Selection**: Generates a ranking of viable cheaper instances.
+6. **Safety Engine**: The final gatekeeper. Emits `DO NOT RIGHTSIZE` if constraints break.
+7. **Agentic Decision Layer**: The Agent traverses state (`OBSERVE` -> `ANALYZE` -> `PLAN` etc.).
+8. **Migration**: Updates the `LocalInfrastructure` mock environment state.
+9. **Monitoring & Observation**: Extracts immediate simulated telemetry from the new instance state.
+10. **Rollback / Replan**: If degraded, gracefully restores state.
+11. **Audit**: Logs to `dashboard_audit_log.csv`.
+12. **Portfolio / Dashboard**: Visualizes outcomes to stakeholders.

@@ -1,57 +1,70 @@
 # Performance-Safe Rightsizing Simulator
 
-## Problem Statement
-The organization currently performs cost-saving actions such as rightsizing infrastructure instances. However, rightsizing decisions are often based on incomplete or averaged usage information. A cheaper instance can sometimes cause CPU saturation, memory pressure, increased latency, request-processing degradation, and availability/SLO violations.
-
-## Objective
-Build a working workload-aware rightsizing simulator that compares the cost and service-level impact of moving an environment from its current instance type to a cheaper candidate instance type. 
-
-## Key Features
-- **Workload-Aware Simulation**: Projects resource utilization (CPU, memory), latency, and availability risks based on realistic historical workloads.
-- **Service-Level Validation**: Rejects rightsizing if strict latency or availability SLOs are violated.
-- **Interactive UI**: A Streamlit dashboard to explore scenarios, run simulations, and visualize performance vs. cost trade-offs.
-- **Sensitivity Analysis**: Evaluates decisions against future traffic growth.
+## Project
+- **Title**: Performance-Safe Rightsizing Simulator
+- **Problem**: Rightsizing infrastructure decisions based solely on average utilization often result in CPU/Memory saturation, degraded latency, or availability breaches.
+- **Objective**: Provide a data-driven, workload-aware decision engine that simulates performance impacts *before* migrations, rejecting unsafe rightsizing attempts.
+- **Domain**: Cloud FinOps, Site Reliability Engineering (SRE), and Infrastructure Management.
 
 ## Architecture
-See `docs/architecture.md` for a detailed architecture diagram.
-- **Data**: Synthetic historical telemetry.
-- **Engine**: Baseline calculation, Workload Model, Performance Model, Cost Model, Availability Model, Decision Engine.
-- **UI**: Streamlit application.
-- **Execution**: Local Mock Infrastructure module that models in-memory instances.
-- **Audit**: Durable CSV ledger logging every state change.
+- **Major Components**: Telemetry ingestion, Baseline/Workload/Performance/Availability modeling engines, Safety Decision Engine, Agentic workflow orchestrator, Post-Migration monitor, Streamlit UI.
+- **Data Flow**: `Telemetry -> Simulation -> Safety Engine -> Decision -> Migration/Rejection -> Monitoring -> Audit/Rollback`.
+- **Agentic Workflow**: Fully implements an autonomous observation loop (`OBSERVE -> ANALYZE -> PLAN -> VALIDATING -> EXECUTING -> VERIFYING -> RE-PLAN`).
 
-## How to Run
+## Core Functionality
+- **Telemetry Validation**: Drops invalid/missing/negative metrics before processing.
+- **Workload Modeling**: Synthesizes and tests against normal, seasonal, and peak traffic pressure conditions.
+- **Candidate Selection**: Intelligently ranks and selects cheaper instance types.
+- **Simulation**: Accurately projects target P95 latency and memory impacts based on CPU correlations.
+- **Safety Engine**: Explicitly rejects candidates violating defined P95 Latency or Availability constraints.
+- **Migration**: Automates state transition in local mock infrastructure.
+- **Monitoring**: Observes checkpoint health immediately post-migration.
+- **Rollback**: Dynamically restores the original instance if degradation is observed.
+- **Portfolio Analysis**: Scans all 73 environments, differentiating safe vs. blocked aggregate savings.
+- **Sensitivity Analysis**: Validates boundary adherence across variables like `traffic_growth` and `cpu_pressure`.
+- **Explainability**: Generates precise JSON justifications mapping exact metrics to safety rejection reasons.
 
-1. **Install Dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
+## Testing
+- **Exact Current Test Count**: 72
+- **How to Run Tests**: Execute `python -m pytest -q` in the terminal.
+- **Test Categories**: Validation, Simulation, Lifecycle, Agentic, Sensitivity, Security, Portfolio Analysis.
+- **Important Failure Scenarios**: Simulates post-migration SLA violation, triggering successful orchestrator rollback. Explicitly tests >100% CPU projection failure bounds.
 
-2. **Generate Synthetic Data**
-   ```bash
-   python scripts/generate_dataset.py
-   ```
+## Error Handling
+- **Validation Failures**: Blocks environment evaluation.
+- **Blocked Rightsizing**: Enforces "DO NOT RIGHTSIZE" and aborts the migration workflow if bounds are broken.
+- **Migration Failures**: Simulated local mock injection handled robustly via localized error responses.
+- **Rollback**: Handled securely via the Orchestrator with critical escalations if simulated state restoration fails.
+- *Detailed behavior mapping is located in `docs/error_handling.md`*.
 
-3. **Run Experiments (3 Scenarios)**
-   ```bash
-   python scripts/run_experiment.py
-   ```
+## API
+- **Application Architecture**: This project is built as a **local Python application and Streamlit dashboard**. 
+- **Actual Endpoints**: **None.** No FastAPI/Flask/REST API endpoints exist. All operations are accessible via Python library modules or the Streamlit UI.
+- *Details in `docs/api.md`*.
 
-4. **Run Local Mock Migration Demo**
-   ```bash
-   python scripts/run_migration_demo.py
-   ```
+## Data & Database
+- **Actual Storage Mechanism**: Flat files (CSV) and in-memory DataFrames (Pandas). The system does not use a persistent relational database like PostgreSQL.
+- **Actual Schema**: No active database schemas exist. Infrastructure is modeled locally via `src/mock_infrastructure.py`.
+- *Details in `docs/database_schema.md`*.
 
-5. **Launch Dashboard**
-   ```bash
-   streamlit run app/dashboard.py
-   ```
+## Security
+- **Input Validation**: Hard validations on data types and bounds within telemetry parsers.
+- **Command Execution Controls**: Explicitly validated via unit tests to ensure `os.system` and `subprocess` are not used maliciously in source logic.
+- **Secret Handling**: Zero API keys or secrets are committed. Test-enforced via automated keyword scanning.
+- **Audit Logging**: Robust append-only ledger in CSV format ensuring non-repudiation of agentic decisions.
 
-6. **Run Tests**
-   ```bash
-   pytest -q
-   ```
+## Local Setup
+1. **Installation**: `pip install -r requirements.txt`
+2. **Dataset Generation**: `python scripts/generate_dataset.py`
+3. **Demos**: 
+   - `python scripts/run_experiment.py`
+   - `python scripts/run_migration_demo.py`
+   - `python scripts/run_agent_demo.py`
+   - `python scripts/final_demo.py`
+4. **Dashboard Startup**: `streamlit run app/dashboard.py`
 
-## Status
-The current prototype represents approximately **50–55% of the overall project scope**. 
-The core data pipeline, baseline analysis, rightsizing simulation, operating scenarios, safety decision engine, automated testing, dashboard, initial sensitivity analysis, and an executable **LOCAL MOCK INFRASTRUCTURE** state machine with audit logging and rollback capabilities are implemented. This demonstrates the safety gate effectively without requiring external dependencies or real cloud deployments.
+## Limitations
+- **Local Mock Infrastructure**: Operations do not interact with actual AWS/GCP APIs; all state transitions are simulated in a local dictionary structure.
+- **Simulated Observations**: Post-migration metrics are simulated based on deterministic rules, not pulled from live Datadog/Prometheus endpoints.
+- **Simulated Stakeholder Validation**: Persona views (FinOps, Infrastructure, Service Owner) are static logic responses, not actual human interaction layers.
+- **Potential vs Realized Savings**: Cost metrics represent potential theoretical savings; actual billing data may vary.
